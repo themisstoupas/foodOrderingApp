@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Menu</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+  <style>
+    body {
+      background-color: #f5f5f5;
+    }
+    .menu-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .menu-table th,
+    .menu-table td {
+      border: 1px solid #ddd;
+      padding: 0.5rem; 
+      text-align: center;
+    }
+    .menu-table td.description {
+      white-space: nowrap;
+      text-align: center; 
+    }
+    .menu-table img {
+      width: 100%;
+      height: 150px; 
+      object-fit: cover; 
+      display: block; 
+    }
+    .menu-table .btn-group .btn {
+      margin-right: 5px;
+    }
+    .menu-table tr {
+      margin-bottom: 10px;
+      display: block;
+    }
+    .menu-table tr:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-6">
+      <label for="menuType">Select Menu Type:</label>
+      <select id="menuType" class="form-control">
+        <option value="mainCourses">Main Courses</option>
+        <option value="appetizers">Appetizers</option>
+        <option value="drinks">Drinks</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row mt-3">
+    <div class="col-md-6" id="menuItemsContainer">
+    </div>
+
+    <div class="col-md-6">
+      <h2>Order Details</h2>
+      <div id="orderDetails"></div>
+
+      <div class="mt-3 border p-3" id="totalAmountContainer">
+        <h4>Total Amount: $0.00</h4>
+      </div>
+
+      <button class="btn btn-success mt-3" id="sendOrderBtn">Send Order</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+ 
+  const menuItems = {
+    mainCourses: [
+      { image: 'bootstrap/images/pizza.jpg', description:  'Pizza With Bacon', price: 10.99 },
+      { image: 'bootstrap/images/burger.jpg', description: 'Hollywood Burger', price: 8.99 },
+      { image: 'bootstrap/images/pasta.jpg', description:  'Pasta Amarticiana', price: 7.99 },
+    ],
+    appetizers: [
+      { image: 'bootstrap/images/onion.jpg', description:  'Onion Rings', price: 4.99 },
+      { image: 'bootstrap/images/garlic.jpg', description: 'Garlic Bread', price: 5.99 },
+      { image: 'bootstrap/images/sticks.jpg', description: 'Cream Sticks', price: 4.30 },
+    ],
+    drinks: [
+      { image: 'bootstrap/images/sprite.jpg', description:   'Sprite 330ml', price: 2.60 },
+      { image: 'bootstrap/images/fanta.jpg', description:    'Fanta 500ml', price: 2.60 },
+      { image: 'bootstrap/images/alpha.jpg', description:    'Alpha 330ml', price: 1.90 },
+    ],
+  };
+
+  const orderDetails = {};
+
+  function renderMenuItems(menuType) {
+    const menuItemsContainer = $('#menuItemsContainer');
+    menuItemsContainer.empty();
+
+    const menuItemsTable = $('<table class="menu-table"></table>');
+
+    menuItems[menuType].forEach(item => {
+      const menuItemHtml = `
+        <tr class="menu-item">
+          <td><img src="${item.image}" alt="${item.description}"></td>
+          <td class="description">${item.description}</td>
+          <td>$${item.price.toFixed(2)}</td>
+          <td class="btn-container">
+            <div class="btn-group">
+              <button class="btn btn-primary btn-sm addToOrder" data-description="${item.description}" data-price="${item.price}">
+                <i class="fas fa-plus"></i>
+              </button>
+              <button class="btn btn-danger btn-sm removeFromOrder" data-description="${item.description}" data-price="${item.price}">
+                <i class="fas fa-minus"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+      menuItemsTable.append(menuItemHtml);
+    });
+
+    menuItemsContainer.append(menuItemsTable);
+  }
+
+  function updateOrderDetails(description, price, operation) {
+    if (orderDetails[description]) {
+      if (operation === 'add') {
+        orderDetails[description].quantity += 1;
+        orderDetails[description].total += price;
+      } else if (operation === 'remove') {
+        if (orderDetails[description].quantity > 1) {
+          orderDetails[description].quantity -= 1;
+          orderDetails[description].total -= price;
+        } else {
+          delete orderDetails[description];
+        }
+      }
+    } else {
+      if (operation === 'add') {
+        orderDetails[description] = { quantity: 1, total: price };
+      }
+    }
+
+    displayOrderDetails();
+    displayTotalAmount();
+  }
+
+  function displayOrderDetails() {
+    const orderDetailsContainer = $('#orderDetails');
+    orderDetailsContainer.empty();
+
+    for (const description in orderDetails) {
+      const { quantity, total } = orderDetails[description];
+      const orderItemHtml = `
+        <div class="row mb-2">
+          <div class="col-md-4">${description}</div>
+          <div class="col-md-4">Quantity: ${quantity}</div>
+          <div class="col-md-4">Total: $${total.toFixed(2)}</div>
+        </div>
+      `;
+      orderDetailsContainer.append(orderItemHtml);
+    }
+  }
+
+  function displayTotalAmount() {
+    const totalAmountContainer = $('#totalAmountContainer');
+    const totalAmount = calculateTotalAmount();
+
+    const totalAmountHtml = `
+      <h4>Total Amount: $${totalAmount.toFixed(2)}</h4>
+    `;
+
+    totalAmountContainer.html(totalAmountHtml);
+  }
+
+  function calculateTotalAmount() {
+    let totalAmount = 0;
+
+    for (const description in orderDetails) {
+      const { total } = orderDetails[description];
+      totalAmount += total;
+    }
+
+    return totalAmount;
+  }
+
+  $('#menuType').change(function () {
+    const selectedMenuType = $(this).val();
+    renderMenuItems(selectedMenuType);
+  });
+
+  $('#menuItemsContainer').on('click', '.addToOrder', function () {
+    const description = $(this).data('description');
+    const price = $(this).data('price');
+    updateOrderDetails(description, price, 'add');
+  });
+
+  $('#menuItemsContainer').on('click', '.removeFromOrder', function () {
+    const description = $(this).data('description');
+    const price = $(this).data('price');
+    updateOrderDetails(description, price, 'remove');
+  });
+
+  $('#sendOrderBtn').click(function () {
+    const totalAmount = calculateTotalAmount();
+
+    if (totalAmount > 0) {
+      alert('Order sent successfully!');
+    } else {
+      alert('Please add items to your order before sending.');
+    }
+  });
+
+  renderMenuItems($('#menuType').val());
+</script>
+
+</body>
+</html>
